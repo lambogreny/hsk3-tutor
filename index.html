@@ -344,30 +344,38 @@ function Exam(){
             e(Box,{sx:{color:'success.main', mt:'2px'}}, Sym('check_circle',18)),
             e(Typography,{variant:'body2'}, t))))
       )),
-    // REAL practice tests — downloadable + audio
-    e(Typography,{variant:'h5', fontWeight:700, sx:{mb:1, mt:1}}, '📝 ข้อสอบจริง — ฝึกทำได้เลย'),
-    e(Typography,{color:'text.secondary', sx:{mb:2}}, 'ข้อสอบทางการ Hanban พร้อมเฉลยและไฟล์เสียง — ดาวน์โหลดไปฝึกจับเวลา'),
+    // HSK 3.0 reform notice (current)
+    e(Alert,{severity:'warning', sx:{mb:3}, icon:Sym('campaign',22)},
+      e(Typography,{variant:'body2', fontWeight:600}, 'อัปเดต: HSK 3.0 (ก.ค. 2026)'),
+      e(Typography,{variant:'caption'}, 'ระบบใหม่ปรับเป็น 9 ระดับ + เพิ่มสอบพูด (口语) ตั้งแต่ระดับ 3 · ช่วงเปลี่ยนผ่าน ข้อสอบ HSK 3 เดิม (600 คำ) ยังใช้สอบได้ คลังข้อสอบด้านล่างจึงยังใช้เตรียมตัวได้เต็มที่')),
+    // REAL practice tests library
+    e(Typography,{variant:'h5', fontWeight:700, sx:{mb:1, mt:1}}, '📚 คลังข้อสอบจริง — 8 ชุด'),
+    e(Typography,{color:'text.secondary', sx:{mb:2}}, 'ข้อสอบทางการ Hanban ครบชุด (ข้อสอบ + เฉลย + ไฟล์เสียงพาร์ทฟัง) ฝึกจับเวลาได้เลย'),
     e(Grid,{container:true, spacing:2},
       ...[
-        {t:'ชุด H31001', sub:'ข้อสอบตัวอย่างทางการ', test:'exam/h31001-test.pdf', ans:'exam/h31001-answers.pdf', audio:'exam/h31001-listening.mp3'},
-        {t:'ชุด H31332', sub:'ข้อสอบจริงชุดใหม่', test:'exam/h31332-test.pdf', ans:'exam/h31332-answers.pdf', audio:null},
-      ].map((s,i)=>e(Grid,{item:true, xs:12, md:6, key:i},
+        {c:'h31001', sub:'ชุดตัวอย่างทางการ'},
+        {c:'h31002', sub:'ชุดจริง #2'},
+        {c:'h31003', sub:'ชุดจริง #3'},
+        {c:'h31004', sub:'ชุดจริง #4'},
+        {c:'h31005', sub:'ชุดจริง #5'},
+        {c:'h31329', sub:'ชุดใหม่ #329'},
+        {c:'h31330', sub:'ชุดใหม่ #330'},
+        {c:'h31332', sub:'ชุดใหม่ #332'},
+      ].map((s,i)=>e(Grid,{item:true, xs:12, sm:6, md:4, key:i},
         e(Card,{variant:'outlined', sx:{height:'100%'}},
           e(CardContent,null,
             e(Stack,{direction:'row', spacing:1.5, alignItems:'center', sx:{mb:1.5}},
-              e(Avatar,{sx:{bgcolor:'error.main'}}, Sym('description',22)),
-              e(Box,null, e(Typography,{variant:'h6', fontWeight:700}, s.t),
+              e(Avatar,{sx:{bgcolor:'error.main', fontWeight:700, fontSize:14}}, (i+1)),
+              e(Box,null, e(Typography,{variant:'subtitle1', fontWeight:700}, s.c.toUpperCase()),
                 e(Typography,{variant:'caption', color:'text.secondary'}, s.sub))),
             e(Stack,{spacing:1},
-              e(Button,{variant:'contained', color:'error', startIcon:Sym('quiz',18), href:s.test, target:'_blank', fullWidth:true}, 'เปิดข้อสอบ (PDF)'),
-              e(Button,{variant:'outlined', startIcon:Sym('check_circle',18), href:s.ans, target:'_blank', fullWidth:true}, 'ดูเฉลย'),
-              s.audio ? e(Box,{sx:{pt:0.5}},
-                e(Typography,{variant:'caption', color:'text.secondary'}, Sym('headphones',14),' ไฟล์เสียงพาร์ทการฟัง:'),
-                e('audio',{controls:true, src:s.audio, style:{width:'100%', marginTop:6}})) : null
+              e(Button,{variant:'contained', color:'error', size:'small', startIcon:Sym('quiz',16), href:'exam/'+s.c+'-test.pdf', target:'_blank', fullWidth:true}, 'ข้อสอบ'),
+              e(Button,{variant:'outlined', size:'small', startIcon:Sym('check_circle',16), href:'exam/'+s.c+'-answers.pdf', target:'_blank', fullWidth:true}, 'เฉลย'),
+              e('audio',{controls:true, preload:'none', src:'exam/'+s.c+'-listening.mp3', style:{width:'100%', height:34, marginTop:4}})
             )
           ))))
     ),
-    e(Alert,{severity:'info', sx:{mt:3}}, 'แนะนำ: สัปดาห์สุดท้ายก่อนสอบ ให้ทำข้อสอบเต็มชุดแบบจับเวลา 90 นาที เพื่อจำลองห้องสอบจริง')
+    e(Alert,{severity:'info', sx:{mt:3}}, 'แนะนำ: สัปดาห์สุดท้ายก่อนสอบ ทำข้อสอบเต็มชุดแบบจับเวลา 90 นาที (ฟังเสียงรอบเดียว) เพื่อจำลองห้องสอบจริง')
   );
 }
 
