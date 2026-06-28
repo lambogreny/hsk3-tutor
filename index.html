@@ -625,14 +625,14 @@ function PenLayer({on, color, size, clearKey, undoKey, saveKey, section}){
   };
   // load saved ink for this section
   const loadInk = ()=>{ try{ const raw=localStorage.getItem(skey); strokes.current = raw?JSON.parse(raw):[]; }catch(e){ strokes.current=[]; } redraw(); };
-  useEffect(()=>{ if(on){ fit(); loadInk(); window.addEventListener('resize',fit);} return ()=>window.removeEventListener('resize',fit); },[on]);
-  useEffect(()=>{ if(on) loadInk(); },[section]);  // switch page -> load that page's ink
+  // canvas is ALWAYS mounted so ink stays visible even when pen mode is off
+  useEffect(()=>{ fit(); loadInk(); window.addEventListener('resize',fit); return ()=>window.removeEventListener('resize',fit); },[]);
+  useEffect(()=>{ loadInk(); },[section]);  // switch page -> load that page's ink
   useEffect(()=>{ if(clearKey>0){ strokes.current=[]; redraw(); persist(); } },[clearKey]);
   useEffect(()=>{ if(undoKey>0){ strokes.current.pop(); redraw(); persist(); } },[undoKey]);
   useEffect(()=>{ if(saveKey>0 && cv.current){ // export current screen ink as PNG
     try{ const a=document.createElement('a'); a.download='Lishuli-โน้ต-'+(section||'page')+'.png'; a.href=cv.current.toDataURL('image/png'); a.click(); }catch(e){}
   } },[saveKey]);
-  if(!on) return null;
   const pos=(ev)=>{ const r=cv.current.getBoundingClientRect();
     // pressure: stylus gives 0..1; mouse/touch report 0 or 0.5 → treat as 1 (uniform)
     let pr = ev.pressure; if(ev.pointerType!=='pen' || !pr) pr = 1;
@@ -651,8 +651,10 @@ function PenLayer({on, color, size, clearKey, undoKey, saveKey, section}){
     }); };
   const end=()=>{ if(draw.current.down && draw.current.pts.length){ strokes.current.push({color,size,pts:draw.current.pts}); persist(); } draw.current={down:false,pts:[]}; };
   return e('canvas',{ref:cv,
-    onPointerDown:start, onPointerMove:move, onPointerUp:end, onPointerCancel:end,
-    style:{position:'fixed', inset:0, zIndex:1290, touchAction:'none', cursor:'crosshair'}});
+    onPointerDown: on?start:undefined, onPointerMove: on?move:undefined, onPointerUp: on?end:undefined, onPointerCancel: on?end:undefined,
+    style:{position:'fixed', inset:0, zIndex:1290, touchAction:'none',
+      cursor: on?'crosshair':'default',
+      pointerEvents: on?'auto':'none'}});  // off => ink visible but page stays usable
 }
 
 function PenToolbar({penOn, setPenOn, color, setColor, size, setSize, onClear, onUndo, onSave}){
