@@ -26,6 +26,7 @@
 <body>
 <div id="root"></div>
 <script src="./data.js"></script>
+<script src="./pagemap.js"></script>
 <script>
 const e = React.createElement;
 const { useState, useMemo, useEffect } = React;
@@ -33,9 +34,10 @@ const M = MaterialUI;
 const { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Container, Box, Stack, Paper,
   Card, CardContent, CardActionArea, Typography, Chip, Avatar, Divider, Button, IconButton,
   TextField, InputAdornment, Tabs, Tab, Grid, LinearProgress, ToggleButton, ToggleButtonGroup,
-  Tooltip, Fade, Grow, Pagination, Alert, Badge } = M;
+  Tooltip, Fade, Grow, Pagination, Alert, Badge, Dialog, DialogContent, DialogTitle, AppBar:_AB } = M;
 
 const DATA = window.HSK3_DATA || [];
+const PAGE = window.HSK3_PAGE || {};
 const Sym = (n,s=24)=>e('span',{className:'ms',style:{fontSize:s}},n);
 
 // ---------- NAV ----------
@@ -44,9 +46,28 @@ const SECTIONS = [
   {key:'vocab', label:'คำศัพท์ 600', icon:'menu_book'},
   {key:'flash', label:'Flashcard', icon:'style'},
   {key:'grammar', label:'ไวยากรณ์', icon:'school'},
+  {key:'doc', label:'เอกสารต้นฉบับ', icon:'description'},
   {key:'exam', label:'แนวข้อสอบ', icon:'fact_check'},
   {key:'quiz', label:'ทดสอบ', icon:'quiz'},
 ];
+
+// shared document lightbox: opens the original-paper page for a given word number
+function DocDialog({page, open, onClose, highlightZh}){
+  const p = String(page).padStart(2,'0');
+  return e(Dialog,{open:open, onClose:onClose, maxWidth:'md', fullWidth:true},
+    e(DialogTitle,{sx:{display:'flex', alignItems:'center', justifyContent:'space-between'}},
+      e(Box,null,
+        e(Typography,{variant:'h6', fontWeight:700}, 'เอกสารต้นฉบับ — หน้า '+page),
+        e(Typography,{variant:'caption', color:'text.secondary'}, highlightZh? ('ดูคำ '+highlightZh+' ในกระดาษจริง (พร้อมคำแปลไทยสีแดง)') : 'รายการคำศัพท์ HSK 3 ฉบับทางการ + คำแปลไทย')
+      ),
+      e(IconButton,{onClick:onClose}, Sym('close',22))
+    ),
+    e(DialogContent,{sx:{p:1}},
+      e('img',{src:'./docs/vocab-'+p+'.png', alt:'page '+page,
+        style:{width:'100%', borderRadius:8, border:'1px solid rgba(148,163,184,0.3)'}})
+    )
+  );
+}
 
 // ---------- HOME ----------
 function Home({go}){
@@ -113,6 +134,7 @@ function Home({go}){
 function Vocab(){
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [docOpen, setDocOpen] = useState(null); // {page, zh}
   const PER = 24;
   const filtered = useMemo(()=>{
     const s=q.trim().toLowerCase();
@@ -145,8 +167,11 @@ function Vocab(){
               e(Typography,{className:'cn', sx:{fontSize:15, fontWeight:600}}, d.ex_zh),
               e(Typography,{variant:'caption', color:'primary.main', sx:{display:'block'}}, d.ex_py),
               e(Typography,{variant:'body2', color:'error.main'}, d.ex_th)
-            ) : null
+            ) : null,
+            e(Button,{size:'small', startIcon:Sym('description',16), sx:{mt:1, textTransform:'none'},
+              onClick:()=>setDocOpen({page:PAGE[d.n]||1, zh:d.zh})}, 'ดูในเอกสารจริง · หน้า '+(PAGE[d.n]||1))
           )))) ),
+    docOpen ? e(DocDialog,{page:docOpen.page, highlightZh:docOpen.zh, open:true, onClose:()=>setDocOpen(null)}) : null,
     pages>1 ? e(Stack,{alignItems:'center', sx:{mt:4}},
       e(Pagination,{count:pages, page:page, onChange:(ev,v)=>{setPage(v); window.scrollTo(0,0);}, color:'primary'})) : null
   );
@@ -321,6 +346,33 @@ function Quiz(){
   );
 }
 
+// ---------- DOCS (original paper preview) ----------
+function Docs(){
+  const [sel, setSel] = useState(null);
+  const pages = Array.from({length:10}, (_,i)=>i+1);
+  const ranges = {1:'1–52',2:'53–114',3:'115–175',4:'176–239',5:'240–299',6:'300–358',7:'359–420',8:'421–482',9:'483–546',10:'547–600'};
+  return e(Container,{maxWidth:'lg', sx:{py:4}},
+    e(Typography,{variant:'h4', fontWeight:700, gutterBottom:true}, 'เอกสารต้นฉบับ (Paper จริง)'),
+    e(Alert,{severity:'success', sx:{mb:3}, icon:Sym('verified',22)},
+      'รายการคำศัพท์ HSK 3 ฉบับทางการ (Hanban) — เราเพิ่มคำแปลไทยสีแดงทับให้ทุกคำ แตะเพื่อดูเต็มหน้า เทียบกับกระดาษจริงได้เลย'),
+    e(Grid,{container:true, spacing:2},
+      ...pages.map(p=>{
+        const pp=String(p).padStart(2,'0');
+        return e(Grid,{item:true, xs:6, sm:4, md:3, key:p},
+          e(Card,{variant:'outlined'},
+            e(CardActionArea,{onClick:()=>setSel(p)},
+              e('img',{src:'./docs/vocab-'+pp+'.png', alt:'หน้า '+p,
+                style:{width:'100%', display:'block', borderBottom:'1px solid rgba(148,163,184,0.2)'}}),
+              e(CardContent,{sx:{py:1.5}},
+                e(Typography,{fontWeight:700}, 'หน้า '+p),
+                e(Typography,{variant:'caption', color:'text.secondary'}, 'คำที่ '+ranges[p])
+              )))
+        );
+      })),
+    sel ? e(DocDialog,{page:sel, open:true, onClose:()=>setSel(null)}) : null
+  );
+}
+
 // ---------- APP ----------
 function App(){
   const [mode, setMode] = useState('light');
@@ -332,7 +384,7 @@ function App(){
   }),[mode]);
   useEffect(()=>{window.scrollTo(0,0);},[sec]);
   const go = (s)=>setSec(s);
-  const View = {home:Home, vocab:Vocab, flash:Flash, grammar:Grammar, exam:Exam, quiz:Quiz}[sec];
+  const View = {home:Home, vocab:Vocab, flash:Flash, grammar:Grammar, doc:Docs, exam:Exam, quiz:Quiz}[sec];
   return e(ThemeProvider,{theme},
     e(CssBaseline),
     e(Box,{sx:{minHeight:'100vh', bgcolor:'background.default'}},
