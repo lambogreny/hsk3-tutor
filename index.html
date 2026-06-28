@@ -425,6 +425,22 @@ function Exam(){
             )
           ))))
     ),
+    // NEWEST 2026 — HSK 3.0 official samples (incl. speaking)
+    e(Card,{variant:'outlined', sx:{mt:3, borderColor:'error.main', borderWidth:2}},
+      e(CardContent,null,
+        e(Stack,{direction:'row', spacing:1.5, alignItems:'center', sx:{mb:1}},
+          e(Avatar,{sx:{bgcolor:'error.main'}}, Sym('new_releases',22)),
+          e(Box,null,
+            e(Typography,{variant:'h6', fontWeight:700}, 'ข้อสอบ HSK 3.0 ล่าสุด (ปี 2026)'),
+            e(Typography,{variant:'caption', color:'text.secondary'}, 'ระบบใหม่ เริ่มทดลองสอบ 31 ม.ค. 2026 — มีพาร์ทพูด (口语) เพิ่ม'))),
+        e(Typography,{variant:'body2', color:'text.secondary', sx:{mb:1.5}},
+          'หมายเหตุ: ข้อสอบจริงของแต่ละรอบสอบเป็นความลับ ไม่เปิดเผย — แต่ Hanban เผยแพร่ "ตัวอย่างข้อสอบทางการ (样卷)" ของ HSK 3.0 รวมพาร์ทพูดให้ฝึกได้ที่เว็บทางการ'),
+        e(Stack,{direction:'row', spacing:1, flexWrap:'wrap', useFlexGap:true},
+          e(Button,{variant:'contained', color:'error', size:'small', startIcon:Sym('open_in_new',16),
+            href:'https://www.chinesetest.cn/hsk', target:'_blank'}, 'เว็บทางการ chinesetest.cn'),
+          e(Button,{variant:'outlined', size:'small', startIcon:Sym('record_voice_over',16),
+            href:'https://www.chinesetest.cn/godownload.do', target:'_blank'}, 'ตัวอย่างข้อสอบ+เสียง+พาร์ทพูด'))
+      )),
     e(Alert,{severity:'info', sx:{mt:3}}, 'แนะนำ: สัปดาห์สุดท้ายก่อนสอบ ทำข้อสอบเต็มชุดแบบจับเวลา 90 นาที (ฟังเสียงรอบเดียว) เพื่อจำลองห้องสอบจริง')
   );
 }
