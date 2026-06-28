@@ -156,11 +156,46 @@ function Home({go}){
   );
 }
 
+// ---------- FOCUS / PRESENTATION MODE ----------
+function FocusDialog({list, idx, setIdx, onClose}){
+  const d = list[idx];
+  if(!d) return null;
+  const go=(delta)=>setIdx(i=>(i+delta+list.length)%list.length);
+  useEffect(()=>{
+    const h=(ev)=>{ if(ev.key==='ArrowRight')go(1); else if(ev.key==='ArrowLeft')go(-1); else if(ev.key==='Escape')onClose(); };
+    window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h);
+  },[list.length]);
+  return e(Dialog,{open:true, onClose:onClose, fullScreen:true},
+    e(Box,{sx:{height:'100%', display:'flex', flexDirection:'column', bgcolor:'background.default'}},
+      e(Stack,{direction:'row', justifyContent:'space-between', alignItems:'center', sx:{p:2}},
+        e(Chip,{label:'โหมดสอน · '+(idx+1)+'/'+list.length, color:'error'}),
+        e(IconButton,{onClick:onClose, size:'large'}, Sym('close',28))
+      ),
+      e(Box,{sx:{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', px:3}},
+        e(Typography,{className:'cn', sx:{fontSize:{xs:120,md:200}, fontWeight:700, lineHeight:1}}, d.zh),
+        e(Typography,{sx:{fontSize:{xs:34,md:48}, color:'primary.main', fontWeight:600, mt:1}}, d.py),
+        e(Typography,{sx:{fontSize:{xs:26,md:36}, fontWeight:500, mt:1}}, d.th),
+        d.ex_zh ? e(Box,{sx:{mt:4, p:3, bgcolor:'action.hover', borderRadius:3, maxWidth:880}},
+          e(Typography,{className:'cn', sx:{fontSize:{xs:28,md:40}, fontWeight:700}}, d.ex_zh),
+          e(Typography,{sx:{fontSize:{xs:18,md:24}, color:'primary.main', mt:1}}, d.ex_py),
+          e(Typography,{sx:{fontSize:{xs:18,md:24}, color:'error.main', mt:0.5}}, d.ex_th)
+        ) : null
+      ),
+      e(Stack,{direction:'row', justifyContent:'space-between', alignItems:'center', sx:{p:3}},
+        e(Button,{size:'large', variant:'outlined', startIcon:Sym('chevron_left',26), onClick:()=>go(-1)}, 'ก่อนหน้า'),
+        e(Typography,{variant:'caption', color:'text.secondary'}, 'ใช้ลูกศร ← → เลื่อนได้'),
+        e(Button,{size:'large', variant:'contained', color:'error', endIcon:Sym('chevron_right',26), onClick:()=>go(1)}, 'คำถัดไป')
+      )
+    )
+  );
+}
+
 // ---------- VOCAB ----------
 function Vocab(){
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [docOpen, setDocOpen] = useState(null); // {page, zh}
+  const [focusIdx, setFocusIdx] = useState(null); // index into `cur`
   const PER = 24;
   const filtered = useMemo(()=>{
     const s=q.trim().toLowerCase();
@@ -178,14 +213,15 @@ function Vocab(){
       InputProps:{startAdornment:e(InputAdornment,{position:'start'}, Sym('search',22))}}),
     e(Typography,{variant:'body2', color:'text.secondary', sx:{mb:2}}, 'พบ '+filtered.length+' คำ'),
     e(Grid,{container:true, spacing:2},
-      ...cur.map(d=>e(Grid,{item:true, xs:12, sm:6, md:4, key:d.n},
+      ...cur.map((d,ci)=>e(Grid,{item:true, xs:12, sm:6, md:4, key:d.n},
         e(Card,{variant:'outlined', sx:{height:'100%'}},
           e(CardContent,null,
             e(Stack,{direction:'row', justifyContent:'space-between', alignItems:'flex-start'},
-              e(Box,null,
-                e(Typography,{className:'cn', sx:{fontSize:30, fontWeight:700, lineHeight:1.1}}, d.zh),
-                e(Typography,{color:'primary.main', sx:{fontWeight:600}}, d.py)
-              ),
+              e(Tooltip,{title:'แตะเพื่อโฟกัส/สอนคำนี้เต็มจอ', arrow:true},
+                e(Box,{onClick:()=>setFocusIdx(ci), sx:{cursor:'pointer', borderRadius:2, px:0.5, '&:hover':{bgcolor:'action.hover'}}},
+                  e(Typography,{className:'cn', sx:{fontSize:30, fontWeight:700, lineHeight:1.1}}, d.zh),
+                  e(Typography,{color:'primary.main', sx:{fontWeight:600}}, d.py)
+                )),
               e(Chip,{size:'small', variant:'outlined', label:'#'+d.n})
             ),
             e(Typography,{sx:{mt:0.5, mb:1.5, fontWeight:500}}, d.th),
@@ -198,6 +234,7 @@ function Vocab(){
               onClick:()=>setDocOpen({page:PAGE[d.n]||1, zh:d.zh, n:d.n})}, 'ดูในเอกสารจริง (ซูม+วงให้)')
           )))) ),
     docOpen ? e(DocDialog,{page:docOpen.page, highlightZh:docOpen.zh, wordN:docOpen.n, open:true, onClose:()=>setDocOpen(null)}) : null,
+    focusIdx!==null ? e(FocusDialog,{list:cur, idx:focusIdx, setIdx:setFocusIdx, onClose:()=>setFocusIdx(null)}) : null,
     pages>1 ? e(Stack,{alignItems:'center', sx:{mt:4}},
       e(Pagination,{count:pages, page:page, onChange:(ev,v)=>{setPage(v); window.scrollTo(0,0);}, color:'primary'})) : null
   );
@@ -340,20 +377,25 @@ function Quiz(){
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
   const [picked, setPicked] = useState(null);
+  const [seed, setSeed] = useState(0); // bump to regenerate a fresh random quiz
   const TOTAL = 10;
+  const rint = (m)=>Math.floor(Math.random()*m);
   const quiz = useMemo(()=>{
     const pool=[...DATA]; const qs=[];
-    for(let i=0;i<TOTAL;i++){
-      const correct = pool[(i*53+7)%pool.length];
+    // pick TOTAL distinct correct answers at random
+    const used=new Set();
+    while(used.size<TOTAL){ used.add(rint(pool.length)); }
+    [...used].forEach(ci=>{
+      const correct = pool[ci];
       const opts=[correct];
-      let g=0;
-      while(opts.length<4){ const c=pool[(i*31+g*97+11)%pool.length]; g++; if(!opts.find(o=>o.n===c.n)) opts.push(c); }
-      // shuffle opts deterministically
-      for(let k=opts.length-1;k>0;k--){const j=(k*7+i*3)%(k+1);[opts[k],opts[j]]=[opts[j],opts[k]];}
+      while(opts.length<4){ const c=pool[rint(pool.length)]; if(!opts.find(o=>o.n===c.n)) opts.push(c); }
+      for(let k=opts.length-1;k>0;k--){const j=rint(k+1);[opts[k],opts[j]]=[opts[j],opts[k]];}
       qs.push({correct, opts});
-    }
+    });
+    // shuffle question order too
+    for(let k=qs.length-1;k>0;k--){const j=rint(k+1);[qs[k],qs[j]]=[qs[j],qs[k]];}
     return qs;
-  },[]);
+  },[seed]);
   if(done){
     const pct=Math.round(score/TOTAL*100);
     return e(Container,{maxWidth:'sm', sx:{py:6, textAlign:'center'}},
@@ -361,7 +403,7 @@ function Quiz(){
       e(Typography,{variant:'h4', fontWeight:700}, 'ได้ '+score+'/'+TOTAL),
       e(Typography,{color:'text.secondary', sx:{mb:1}}, pct>=60?'เยี่ยมมาก! ผ่านเกณฑ์':'สู้ๆ ลองอีกครั้งนะ'),
       e(LinearProgress,{variant:'determinate', value:pct, color:pct>=60?'success':'error', sx:{height:10, borderRadius:5, my:2}}),
-      e(Button,{variant:'contained', color:'error', startIcon:Sym('replay',20), onClick:()=>{setRound(0);setScore(0);setDone(false);setPicked(null);}}, 'ทำใหม่อีกครั้ง')
+      e(Button,{variant:'contained', color:'error', startIcon:Sym('replay',20), onClick:()=>{setSeed(s=>s+1);setRound(0);setScore(0);setDone(false);setPicked(null);}}, 'ทำชุดใหม่ (สุ่มข้อใหม่)')
     );
   }
   const cur = quiz[round];
