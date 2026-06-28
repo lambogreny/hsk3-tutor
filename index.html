@@ -597,10 +597,12 @@ function Docs(){
 }
 
 // ---------- PEN / ANNOTATION overlay (for teaching on iPad) ----------
-function PenLayer({on, color, size, clearKey, undoKey}){
+function PenLayer({on, color, size, clearKey, undoKey, saveKey, section}){
   const cv = React.useRef(null);
   const draw = React.useRef({down:false, pts:[]});
   const strokes = React.useRef([]); // history for undo: {color,size,pts}
+  const skey = 'lishuli_ink_'+(section||'home');
+  const persist = ()=>{ try{ localStorage.setItem(skey, JSON.stringify(strokes.current)); }catch(e){} };
   const fit = ()=>{ const c=cv.current; if(!c) return; const dpr=window.devicePixelRatio||1;
     c.width=window.innerWidth*dpr; c.height=window.innerHeight*dpr;
     c.style.width=window.innerWidth+'px'; c.style.height=window.innerHeight+'px';
@@ -621,9 +623,15 @@ function PenLayer({on, color, size, clearKey, undoKey}){
     ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,c.width,c.height); ctx.restore();
     strokes.current.forEach(s=>drawStroke(ctx,s));
   };
-  useEffect(()=>{ if(on){ fit(); window.addEventListener('resize',fit);} return ()=>window.removeEventListener('resize',fit); },[on]);
-  useEffect(()=>{ strokes.current=[]; redraw(); },[clearKey]);
-  useEffect(()=>{ if(undoKey>0){ strokes.current.pop(); redraw(); } },[undoKey]);
+  // load saved ink for this section
+  const loadInk = ()=>{ try{ const raw=localStorage.getItem(skey); strokes.current = raw?JSON.parse(raw):[]; }catch(e){ strokes.current=[]; } redraw(); };
+  useEffect(()=>{ if(on){ fit(); loadInk(); window.addEventListener('resize',fit);} return ()=>window.removeEventListener('resize',fit); },[on]);
+  useEffect(()=>{ if(on) loadInk(); },[section]);  // switch page -> load that page's ink
+  useEffect(()=>{ if(clearKey>0){ strokes.current=[]; redraw(); persist(); } },[clearKey]);
+  useEffect(()=>{ if(undoKey>0){ strokes.current.pop(); redraw(); persist(); } },[undoKey]);
+  useEffect(()=>{ if(saveKey>0 && cv.current){ // export current screen ink as PNG
+    try{ const a=document.createElement('a'); a.download='Lishuli-โน้ต-'+(section||'page')+'.png'; a.href=cv.current.toDataURL('image/png'); a.click(); }catch(e){}
+  } },[saveKey]);
   if(!on) return null;
   const pos=(ev)=>{ const r=cv.current.getBoundingClientRect();
     // pressure: stylus gives 0..1; mouse/touch report 0 or 0.5 → treat as 1 (uniform)
@@ -641,13 +649,13 @@ function PenLayer({on, color, size, clearKey, undoKey}){
         const mx=(a.x+p.x)/2, my=(a.y+p.y)/2; ctx.quadraticCurveTo(a.x,a.y,mx,my); ctx.lineTo(p.x,p.y); ctx.stroke(); }
       pts.push(p);
     }); };
-  const end=()=>{ if(draw.current.down && draw.current.pts.length){ strokes.current.push({color,size,pts:draw.current.pts}); } draw.current={down:false,pts:[]}; };
+  const end=()=>{ if(draw.current.down && draw.current.pts.length){ strokes.current.push({color,size,pts:draw.current.pts}); persist(); } draw.current={down:false,pts:[]}; };
   return e('canvas',{ref:cv,
     onPointerDown:start, onPointerMove:move, onPointerUp:end, onPointerCancel:end,
     style:{position:'fixed', inset:0, zIndex:1290, touchAction:'none', cursor:'crosshair'}});
 }
 
-function PenToolbar({penOn, setPenOn, color, setColor, size, setSize, onClear, onUndo}){
+function PenToolbar({penOn, setPenOn, color, setColor, size, setSize, onClear, onUndo, onSave}){
   const colors=[['#dc2626','แดง'],['#2563eb','น้ำเงิน'],['#16a34a','เขียว'],['#111827','ดำ'],['hl','ปากกาเน้น']];
   const widths=[[2,'บาง'],[4,'กลาง'],[7,'หนา']];
   const dot=(c)=>c==='hl'?'rgba(250,204,21,0.6)':(c==='erase'?'#e5e7eb':c);
@@ -670,6 +678,7 @@ function PenToolbar({penOn, setPenOn, color, setColor, size, setSize, onClear, o
       e(Tooltip,{title:'ยางลบ', placement:'left'}, e(IconButton,{size:'small', onClick:()=>setColor('erase'),
         sx:{border: color==='erase'?'3px solid':'2px solid transparent', borderColor:color==='erase'?'primary.main':'transparent'}}, Sym('ink_eraser',20))),
       e(Tooltip,{title:'ย้อนกลับ (undo)', placement:'left'}, e(IconButton,{size:'small', onClick:onUndo}, Sym('undo',20))),
+      e(Tooltip,{title:'เซฟเป็นรูป PNG', placement:'left'}, e(IconButton,{size:'small', color:'primary', onClick:onSave}, Sym('download',20))),
       e(Tooltip,{title:'ล้างทั้งหมด', placement:'left'}, e(IconButton,{size:'small', color:'error', onClick:onClear}, Sym('delete_sweep',20)))
     ) : null,
     e(Tooltip,{title: penOn?'ปิดโหมดปากกา':'เปิดโหมดปากกา (เขียนบนจอ)', placement:'left'},
@@ -687,6 +696,7 @@ function App(){
   const [penSize, setPenSize] = useState(4);
   const [clearKey, setClearKey] = useState(0);
   const [undoKey, setUndoKey] = useState(0);
+  const [saveKey, setSaveKey] = useState(0);
   const theme = useMemo(()=>createTheme({
     palette:{ mode, primary:{main: mode==='light'?'#2563eb':'#60a5fa'}, error:{main:'#dc2626'} },
     typography:{ fontFamily:'IBM Plex Sans Thai, Noto Sans Thai, sans-serif' },
@@ -720,8 +730,8 @@ function App(){
         e(Typography,{variant:'caption', color:'text.secondary', sx:{display:'block', mt:0.5}},
           'เนื้อหาอ้างอิงข้อสอบทางการ Hanban/Chinese Testing International · © 2026 Lishuli')
       ),
-      e(PenLayer,{on:penOn, color:penColor, size:penSize, clearKey:clearKey, undoKey:undoKey}),
-      e(PenToolbar,{penOn, setPenOn, color:penColor, setColor:setPenColor, size:penSize, setSize:setPenSize, onClear:()=>setClearKey(k=>k+1), onUndo:()=>setUndoKey(k=>k+1)})
+      e(PenLayer,{on:penOn, color:penColor, size:penSize, clearKey:clearKey, undoKey:undoKey, saveKey:saveKey, section:sec}),
+      e(PenToolbar,{penOn, setPenOn, color:penColor, setColor:setPenColor, size:penSize, setSize:setPenSize, onClear:()=>setClearKey(k=>k+1), onUndo:()=>setUndoKey(k=>k+1), onSave:()=>setSaveKey(k=>k+1)})
     )
   );
 }
