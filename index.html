@@ -596,10 +596,97 @@ function Docs(){
   );
 }
 
+// ---------- PEN / ANNOTATION overlay (for teaching on iPad) ----------
+function PenLayer({on, color, size, clearKey, undoKey}){
+  const cv = React.useRef(null);
+  const draw = React.useRef({down:false, pts:[]});
+  const strokes = React.useRef([]); // history for undo: {color,size,pts}
+  const fit = ()=>{ const c=cv.current; if(!c) return; const dpr=window.devicePixelRatio||1;
+    c.width=window.innerWidth*dpr; c.height=window.innerHeight*dpr;
+    c.style.width=window.innerWidth+'px'; c.style.height=window.innerHeight+'px';
+    const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineCap='round'; ctx.lineJoin='round';
+    redraw();
+  };
+  const setStyle=(ctx,col,sz)=>{
+    if(col==='hl'){ ctx.strokeStyle='rgba(250,204,21,0.45)'; ctx.lineWidth=sz*5; ctx.globalCompositeOperation='source-over'; }
+    else if(col==='erase'){ ctx.globalCompositeOperation='destination-out'; ctx.lineWidth=sz*6; }
+    else { ctx.strokeStyle=col; ctx.lineWidth=sz; ctx.globalCompositeOperation='source-over'; }
+  };
+  const drawStroke=(ctx,s)=>{ if(s.pts.length<1) return; setStyle(ctx,s.color,s.size);
+    ctx.beginPath(); ctx.moveTo(s.pts[0].x,s.pts[0].y);
+    for(let i=1;i<s.pts.length;i++){ const a=s.pts[i-1],b=s.pts[i]; ctx.quadraticCurveTo(a.x,a.y,(a.x+b.x)/2,(a.y+b.y)/2); }
+    ctx.stroke();
+  };
+  const redraw=()=>{ const c=cv.current; if(!c) return; const ctx=c.getContext('2d');
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,c.width,c.height); ctx.restore();
+    strokes.current.forEach(s=>drawStroke(ctx,s));
+  };
+  useEffect(()=>{ if(on){ fit(); window.addEventListener('resize',fit);} return ()=>window.removeEventListener('resize',fit); },[on]);
+  useEffect(()=>{ strokes.current=[]; redraw(); },[clearKey]);
+  useEffect(()=>{ if(undoKey>0){ strokes.current.pop(); redraw(); } },[undoKey]);
+  if(!on) return null;
+  const pos=(ev)=>{ const r=cv.current.getBoundingClientRect();
+    // pressure: stylus gives 0..1; mouse/touch report 0 or 0.5 → treat as 1 (uniform)
+    let pr = ev.pressure; if(ev.pointerType!=='pen' || !pr) pr = 1;
+    return {x:ev.clientX-r.left, y:ev.clientY-r.top, p:pr}; };
+  const segWidth=(pr)=> color==='hl'||color==='erase' ? size : Math.max(size*0.45, size*(0.5+pr)); // pressure → width for pen
+  const start=(ev)=>{ ev.preventDefault(); cv.current.setPointerCapture?.(ev.pointerId); const p=pos(ev); draw.current={down:true, pts:[p]}; };
+  const move=(ev)=>{ if(!draw.current.down) return; ev.preventDefault();
+    const ctx=cv.current.getContext('2d');
+    // coalesced events = all sub-frame points → smooth fast strokes (world-class technique)
+    const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+    evs.forEach(ce=>{ const p=pos(ce); const pts=draw.current.pts; const a=pts[pts.length-1];
+      if(a){ setStyle(ctx,color,size); ctx.lineWidth=segWidth(p.p);
+        ctx.beginPath(); ctx.moveTo(a.x,a.y);
+        const mx=(a.x+p.x)/2, my=(a.y+p.y)/2; ctx.quadraticCurveTo(a.x,a.y,mx,my); ctx.lineTo(p.x,p.y); ctx.stroke(); }
+      pts.push(p);
+    }); };
+  const end=()=>{ if(draw.current.down && draw.current.pts.length){ strokes.current.push({color,size,pts:draw.current.pts}); } draw.current={down:false,pts:[]}; };
+  return e('canvas',{ref:cv,
+    onPointerDown:start, onPointerMove:move, onPointerUp:end, onPointerCancel:end,
+    style:{position:'fixed', inset:0, zIndex:1290, touchAction:'none', cursor:'crosshair'}});
+}
+
+function PenToolbar({penOn, setPenOn, color, setColor, size, setSize, onClear, onUndo}){
+  const colors=[['#dc2626','แดง'],['#2563eb','น้ำเงิน'],['#16a34a','เขียว'],['#111827','ดำ'],['hl','ปากกาเน้น']];
+  const widths=[[2,'บาง'],[4,'กลาง'],[7,'หนา']];
+  const dot=(c)=>c==='hl'?'rgba(250,204,21,0.6)':(c==='erase'?'#e5e7eb':c);
+  return e(Box,{sx:{position:'fixed', right:16, bottom:16, zIndex:1300, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1}},
+    penOn ? e(Paper,{elevation:8, sx:{p:1, borderRadius:3, display:'flex', flexDirection:'column', gap:0.75, alignItems:'center'}},
+      ...colors.map(([c,label])=>e(Tooltip,{key:c, title:label, placement:'left'},
+        e(IconButton,{size:'small', onClick:()=>setColor(c),
+          sx:{border: color===c?'3px solid':'2px solid transparent', borderColor: color===c?'primary.main':'transparent', p:0.5}},
+          e(Box,{sx:{width:18, height:18, borderRadius:'50%', bgcolor:dot(c),
+            display:'flex', alignItems:'center', justifyContent:'center'}},
+            c==='hl'? e('span',{className:'ms',style:{fontSize:13,color:'#854d0e'}},'edit') : null) ))),
+      e(Divider,{flexItem:true, sx:{my:0.25}}),
+      // widths
+      ...widths.map(([w,label])=>e(Tooltip,{key:w, title:'เส้น'+label, placement:'left'},
+        e(IconButton,{size:'small', onClick:()=>setSize(w),
+          sx:{border: size===w?'3px solid':'2px solid transparent', borderColor: size===w?'primary.main':'transparent', p:0.5}},
+          e(Box,{sx:{width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center'}},
+            e(Box,{sx:{width:16, height:w, borderRadius:5, bgcolor:'text.primary'}}) )))),
+      e(Divider,{flexItem:true, sx:{my:0.25}}),
+      e(Tooltip,{title:'ยางลบ', placement:'left'}, e(IconButton,{size:'small', onClick:()=>setColor('erase'),
+        sx:{border: color==='erase'?'3px solid':'2px solid transparent', borderColor:color==='erase'?'primary.main':'transparent'}}, Sym('ink_eraser',20))),
+      e(Tooltip,{title:'ย้อนกลับ (undo)', placement:'left'}, e(IconButton,{size:'small', onClick:onUndo}, Sym('undo',20))),
+      e(Tooltip,{title:'ล้างทั้งหมด', placement:'left'}, e(IconButton,{size:'small', color:'error', onClick:onClear}, Sym('delete_sweep',20)))
+    ) : null,
+    e(Tooltip,{title: penOn?'ปิดโหมดปากกา':'เปิดโหมดปากกา (เขียนบนจอ)', placement:'left'},
+      e(IconButton,{onClick:()=>setPenOn(p=>!p), sx:{bgcolor: penOn?'error.main':'primary.main', color:'#fff', width:56, height:56, boxShadow:4, '&:hover':{bgcolor: penOn?'error.dark':'primary.dark'}}},
+        Sym(penOn?'close':'edit',26)))
+  );
+}
+
 // ---------- APP ----------
 function App(){
   const [mode, setMode] = useState('light');
   const [sec, setSec] = useState('home');
+  const [penOn, setPenOn] = useState(false);
+  const [penColor, setPenColor] = useState('#dc2626');
+  const [penSize, setPenSize] = useState(4);
+  const [clearKey, setClearKey] = useState(0);
+  const [undoKey, setUndoKey] = useState(0);
   const theme = useMemo(()=>createTheme({
     palette:{ mode, primary:{main: mode==='light'?'#2563eb':'#60a5fa'}, error:{main:'#dc2626'} },
     typography:{ fontFamily:'IBM Plex Sans Thai, Noto Sans Thai, sans-serif' },
@@ -632,7 +719,9 @@ function App(){
           '600 คำศัพท์ · 600 ประโยคจริง · คลังข้อสอบทางการ · จัดทำโดย Lishuli'),
         e(Typography,{variant:'caption', color:'text.secondary', sx:{display:'block', mt:0.5}},
           'เนื้อหาอ้างอิงข้อสอบทางการ Hanban/Chinese Testing International · © 2026 Lishuli')
-      )
+      ),
+      e(PenLayer,{on:penOn, color:penColor, size:penSize, clearKey:clearKey, undoKey:undoKey}),
+      e(PenToolbar,{penOn, setPenOn, color:penColor, setColor:setPenColor, size:penSize, setSize:setPenSize, onClear:()=>setClearKey(k=>k+1), onUndo:()=>setUndoKey(k=>k+1)})
     )
   );
 }
