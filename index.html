@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>สำนักติว HSK 3 · เรียนจีนให้สอบผ่าน</title>
+<meta name="description" content="คอร์สติว HSK 3 ครบที่สุด — 600 คำศัพท์ + ประโยคจริง + ไวยากรณ์ + ข้อสอบ พร้อม Flashcard และแบบทดสอบ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@mui/material@5.16.7/umd/material-ui.production.min.js"></script>
+<style>
+  html,body{margin:0;}
+  *{font-family:'IBM Plex Sans Thai','Noto Sans Thai',sans-serif;}
+  .cn{font-family:'Noto Serif SC','Noto Serif CJK SC',serif !important;}
+  .ms{font-family:'Material Symbols Rounded' !important;font-weight:normal;line-height:1;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;}
+  .flip-card{ perspective:1200px; }
+  .flip-inner{ transition:transform .5s; transform-style:preserve-3d; position:relative; }
+  .flip-inner.flipped{ transform:rotateY(180deg); }
+  .flip-face{ backface-visibility:hidden; position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .flip-back{ transform:rotateY(180deg); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="./data.js"></script>
+<script>
+const e = React.createElement;
+const { useState, useMemo, useEffect } = React;
+const M = MaterialUI;
+const { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Container, Box, Stack, Paper,
+  Card, CardContent, CardActionArea, Typography, Chip, Avatar, Divider, Button, IconButton,
+  TextField, InputAdornment, Tabs, Tab, Grid, LinearProgress, ToggleButton, ToggleButtonGroup,
+  Tooltip, Fade, Grow, Pagination, Alert, Badge } = M;
+
+const DATA = window.HSK3_DATA || [];
+const Sym = (n,s=24)=>e('span',{className:'ms',style:{fontSize:s}},n);
+
+// ---------- NAV ----------
+const SECTIONS = [
+  {key:'home', label:'หน้าแรก', icon:'home'},
+  {key:'vocab', label:'คำศัพท์ 600', icon:'menu_book'},
+  {key:'flash', label:'Flashcard', icon:'style'},
+  {key:'grammar', label:'ไวยากรณ์', icon:'school'},
+  {key:'exam', label:'แนวข้อสอบ', icon:'fact_check'},
+  {key:'quiz', label:'ทดสอบ', icon:'quiz'},
+];
+
+// ---------- HOME ----------
+function Home({go}){
+  const stats = [
+    {n:'600', l:'คำศัพท์ครบหลักสูตร', i:'menu_book'},
+    {n:'600', l:'ประโยคใช้งานจริง', i:'forum'},
+    {n:'3', l:'พาร์ท ฟัง·อ่าน·เขียน', i:'headphones'},
+    {n:'180', l:'คะแนนผ่าน (เต็ม 300)', i:'military_tech'},
+  ];
+  const feats = [
+    {i:'translate', t:'คำศัพท์พร้อมคำแปลไทย', d:'ครบ 600 คำ มีพินอิน คำอ่าน และความหมายภาษาไทยทุกคำ ค้นหาง่าย'},
+    {i:'forum', t:'ประโยคที่เจ้าของภาษาใช้จริง', d:'ทุกคำมีตัวอย่างประโยคจริง พร้อมพินอินและคำแปล เห็นแล้วใช้เป็น'},
+    {i:'style', t:'Flashcard พลิกจำ', d:'โหมดท่องศัพท์แบบบัตรคำ พลิกดูคำแปล ฝึกความจำได้ทุกที่'},
+    {i:'school', t:'ไวยากรณ์เจาะจุดออกสอบ', d:'把 · 补语 · 比 · 过 อธิบายไทยเข้าใจง่าย พร้อมตัวอย่าง'},
+    {i:'quiz', t:'แบบทดสอบจับเวลา', d:'ทดสอบความรู้แบบ interactive รู้ผลทันที เตรียมพร้อมก่อนสอบจริง'},
+    {i:'verified', t:'อ้างอิงข้อสอบทางการ', d:'เนื้อหาอิงข้อสอบจริง Hanban (H31001) มั่นใจตรงแนวสอบ'},
+  ];
+  return e(Box,null,
+    // hero
+    e(Box,{sx:{textAlign:'center', py:{xs:6,md:9}, px:2,
+      background:'linear-gradient(135deg, rgba(220,38,38,0.10), rgba(37,99,235,0.10))'}},
+      e(Chip,{color:'error', label:'สำนักติวภาษาจีนอันดับ 1', sx:{mb:2, fontWeight:600}}),
+      e(Typography,{variant:'h2',sx:{fontWeight:700, fontSize:{xs:34,md:54}, lineHeight:1.15}},
+        'พิชิต ', e('span',{className:'cn',style:{color:'#dc2626'}},'HSK 三级'), ' ให้สอบผ่าน'),
+      e(Typography,{sx:{color:'text.secondary', fontSize:{xs:16,md:20}, mt:2, maxWidth:680, mx:'auto'}},
+        'คอร์สติว HSK 3 ที่ครบที่สุด — 600 คำศัพท์ ประโยคจริง ไวยากรณ์ และข้อสอบ ในที่เดียว เรียนเองได้ สอบผ่านจริง'),
+      e(Stack,{direction:'row', spacing:2, justifyContent:'center', sx:{mt:4}, flexWrap:'wrap', useFlexGap:true},
+        e(Button,{variant:'contained', size:'large', color:'error', startIcon:Sym('menu_book',20), onClick:()=>go('vocab')}, 'เริ่มเรียนคำศัพท์'),
+        e(Button,{variant:'outlined', size:'large', startIcon:Sym('style',20), onClick:()=>go('flash')}, 'ลองเล่น Flashcard')
+      )
+    ),
+    e(Container,{maxWidth:'lg', sx:{py:5}},
+      // stats
+      e(Grid,{container:true, spacing:2, sx:{mb:5}},
+        ...stats.map((s,i)=>e(Grid,{item:true, xs:6, md:3, key:i},
+          e(Card,{variant:'outlined', sx:{textAlign:'center', py:2.5, height:'100%'}},
+            e(Avatar,{sx:{bgcolor:'error.main', mx:'auto', mb:1}}, Sym(s.i,22)),
+            e(Typography,{variant:'h4', fontWeight:700, color:'error.main'}, s.n),
+            e(Typography,{variant:'body2', color:'text.secondary'}, s.l)
+          )))
+      ),
+      e(Typography,{variant:'h4', fontWeight:700, textAlign:'center', sx:{mb:1}}, 'ทำไมต้องเรียนที่นี่'),
+      e(Typography,{color:'text.secondary', textAlign:'center', sx:{mb:4}}, 'ครบทุกอย่างที่ต้องใช้สอบ HSK 3 ในเว็บเดียว'),
+      e(Grid,{container:true, spacing:2},
+        ...feats.map((f,i)=>e(Grid,{item:true, xs:12, md:4, key:i},
+          e(Card,{variant:'outlined', sx:{height:'100%'}},
+            e(CardContent,null,
+              e(Avatar,{variant:'rounded', sx:{bgcolor:'primary.main', mb:1.5, width:46, height:46}}, Sym(f.i,24)),
+              e(Typography,{variant:'h6', fontWeight:700, gutterBottom:true}, f.t),
+              e(Typography,{variant:'body2', color:'text.secondary'}, f.d)
+            ))))
+      ),
+      e(Card,{sx:{mt:5, bgcolor:'error.main', color:'#fff', textAlign:'center'}},
+        e(CardContent,{sx:{py:4}},
+          e(Typography,{variant:'h5', fontWeight:700}, 'พร้อมเริ่มเส้นทางพิชิต HSK 3 แล้วหรือยัง?'),
+          e(Typography,{sx:{opacity:0.9, mt:1, mb:3}}, '600 คำ + ประโยคจริง + ข้อสอบ รอคุณอยู่'),
+          e(Button,{variant:'contained', size:'large', sx:{bgcolor:'#fff', color:'error.main', '&:hover':{bgcolor:'#f1f5f9'}}, onClick:()=>go('vocab')}, 'เริ่มเลย — ฟรี')
+        ))
+    )
+  );
+}
+
+// ---------- VOCAB ----------
+function Vocab(){
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+  const PER = 24;
+  const filtered = useMemo(()=>{
+    const s=q.trim().toLowerCase();
+    if(!s) return DATA;
+    return DATA.filter(d=> d.zh.includes(q) || d.py.toLowerCase().includes(s) || (d.th||'').includes(q));
+  },[q]);
+  const pages = Math.ceil(filtered.length/PER);
+  const cur = filtered.slice((page-1)*PER, page*PER);
+  useEffect(()=>{setPage(1);},[q]);
+  return e(Container,{maxWidth:'lg', sx:{py:4}},
+    e(Typography,{variant:'h4', fontWeight:700, gutterBottom:true}, 'คลังคำศัพท์ HSK 3'),
+    e(Typography,{color:'text.secondary', sx:{mb:3}}, 'ครบ 600 คำ — มีพินอิน คำแปลไทย และประโยคตัวอย่างจริงทุกคำ'),
+    e(TextField,{fullWidth:true, placeholder:'ค้นหา… (อักษรจีน / พินอิน / คำแปลไทย)', value:q,
+      onChange:ev=>setQ(ev.target.value), sx:{mb:3},
+      InputProps:{startAdornment:e(InputAdornment,{position:'start'}, Sym('search',22))}}),
+    e(Typography,{variant:'body2', color:'text.secondary', sx:{mb:2}}, 'พบ '+filtered.length+' คำ'),
+    e(Grid,{container:true, spacing:2},
+      ...cur.map(d=>e(Grid,{item:true, xs:12, sm:6, md:4, key:d.n},
+        e(Card,{variant:'outlined', sx:{height:'100%'}},
+          e(CardContent,null,
+            e(Stack,{direction:'row', justifyContent:'space-between', alignItems:'flex-start'},
+              e(Box,null,
+                e(Typography,{className:'cn', sx:{fontSize:30, fontWeight:700, lineHeight:1.1}}, d.zh),
+                e(Typography,{color:'primary.main', sx:{fontWeight:600}}, d.py)
+              ),
+              e(Chip,{size:'small', variant:'outlined', label:'#'+d.n})
+            ),
+            e(Typography,{sx:{mt:0.5, mb:1.5, fontWeight:500}}, d.th),
+            d.ex_zh ? e(Box,{sx:{p:1.5, bgcolor:'action.hover', borderRadius:2}},
+              e(Typography,{className:'cn', sx:{fontSize:15, fontWeight:600}}, d.ex_zh),
+              e(Typography,{variant:'caption', color:'primary.main', sx:{display:'block'}}, d.ex_py),
+              e(Typography,{variant:'body2', color:'error.main'}, d.ex_th)
+            ) : null
+          )))) ),
+    pages>1 ? e(Stack,{alignItems:'center', sx:{mt:4}},
+      e(Pagination,{count:pages, page:page, onChange:(ev,v)=>{setPage(v); window.scrollTo(0,0);}, color:'primary'})) : null
+  );
+}
+
+// ---------- FLASHCARD ----------
+function Flash(){
+  const [idx, setIdx] = useState(0);
+  const [flip, setFlip] = useState(false);
+  const [order, setOrder] = useState(()=>DATA.map((_,i)=>i));
+  const d = DATA[order[idx]];
+  const next=()=>{ setFlip(false); setTimeout(()=>setIdx(i=>(i+1)%order.length),120); };
+  const prev=()=>{ setFlip(false); setTimeout(()=>setIdx(i=>(i-1+order.length)%order.length),120); };
+  const shuffle=()=>{ const o=[...order]; for(let i=o.length-1;i>0;i--){const j=Math.floor((i*7+idx*13+3)%(i+1)); [o[i],o[j]]=[o[j],o[i]];} setOrder(o); setIdx(0); setFlip(false); };
+  if(!d) return null;
+  return e(Container,{maxWidth:'sm', sx:{py:4, textAlign:'center'}},
+    e(Typography,{variant:'h4', fontWeight:700, gutterBottom:true}, 'Flashcard ท่องศัพท์'),
+    e(Typography,{color:'text.secondary', sx:{mb:1}}, 'แตะบัตรเพื่อพลิกดูคำแปล'),
+    e(LinearProgress,{variant:'determinate', value:(idx+1)/order.length*100, sx:{mb:1, height:8, borderRadius:5}}),
+    e(Typography,{variant:'caption', color:'text.secondary'}, (idx+1)+' / '+order.length),
+    e(Box,{className:'flip-card', sx:{mt:2, mb:3, height:340, cursor:'pointer'}, onClick:()=>setFlip(f=>!f)},
+      e(Box,{className:'flip-inner'+(flip?' flipped':''), sx:{height:'100%'}},
+        // front
+        e(Card,{className:'flip-face', variant:'outlined', sx:{height:'100%', bgcolor:'background.paper'}},
+          e(Typography,{className:'cn', sx:{fontSize:80, fontWeight:700}}, d.zh),
+          e(Typography,{variant:'h5', color:'primary.main', sx:{mt:1}}, d.py),
+          e(Typography,{variant:'caption', color:'text.secondary', sx:{mt:3}}, 'แตะเพื่อดูคำแปล')
+        ),
+        // back
+        e(Card,{className:'flip-face flip-back', sx:{height:'100%', bgcolor:'error.main', color:'#fff', p:2}},
+          e(Typography,{variant:'h4', fontWeight:700}, d.th),
+          d.ex_zh ? e(Box,{sx:{mt:2}},
+            e(Typography,{className:'cn', sx:{fontSize:20, fontWeight:600}}, d.ex_zh),
+            e(Typography,{variant:'body2', sx:{opacity:0.9}}, d.ex_py),
+            e(Typography,{variant:'body2', sx:{opacity:0.95, mt:0.5}}, d.ex_th)
+          ) : null
+        )
+      )
+    ),
+    e(Stack,{direction:'row', spacing:1.5, justifyContent:'center'},
+      e(Button,{variant:'outlined', startIcon:Sym('chevron_left',20), onClick:prev}, 'ก่อนหน้า'),
+      e(Button,{variant:'outlined', startIcon:Sym('shuffle',20), onClick:shuffle}, 'สุ่ม'),
+      e(Button,{variant:'contained', color:'error', endIcon:Sym('chevron_right',20), onClick:next}, 'ถัดไป')
+    )
+  );
+}
+
+// ---------- GRAMMAR ----------
+function Grammar(){
+  const items = [
+    {t:'โครงสร้าง 把', sub:'จุดวัดระดับ HSK 3', zh:'我把作业做完了。', py:'Wǒ bǎ zuòyè zuò wán le.', th:'ฉันทำการบ้านเสร็จแล้ว', note:'ประธาน + 把 + กรรม + กริยา + ส่วนเสริม — เน้นว่า "จัดการ" กับกรรมอย่างไร'},
+    {t:'บทเสริมระดับ 得', sub:'ขยายว่าทำได้ดีแค่ไหน', zh:'他跑得很快。', py:'Tā pǎo de hěn kuài.', th:'เขาวิ่งได้เร็วมาก', note:'กริยา + 得 + คำขยาย'},
+    {t:'บอกประสบการณ์ 过', sub:'เคยทำมาแล้ว', zh:'我去过中国。', py:'Wǒ qù guo Zhōngguó.', th:'ฉันเคยไปจีน', note:'กริยา + 过 = เคยทำ'},
+    {t:'เปรียบเทียบ 比', sub:'A มากกว่า B', zh:'今天比昨天热。', py:'Jīntiān bǐ zuótiān rè.', th:'วันนี้ร้อนกว่าเมื่อวาน', note:'A + 比 + B + คำคุณศัพท์'},
+    {t:'กำลังทำอยู่ 正在', sub:'กริยากำลังดำเนิน', zh:'他正在看书。', py:'Tā zhèngzài kàn shū.', th:'เขากำลังอ่านหนังสือ', note:'正在 + กริยา'},
+    {t:'เพราะ…จึง 因为…所以…', sub:'เหตุและผล', zh:'因为下雨，所以我没去。', py:'Yīnwèi xià yǔ, suǒyǐ wǒ méi qù.', th:'เพราะฝนตก ฉันจึงไม่ได้ไป', note:'因为 (เหตุ) + 所以 (ผล)'},
+  ];
+  return e(Container,{maxWidth:'md', sx:{py:4}},
+    e(Typography,{variant:'h4', fontWeight:700, gutterBottom:true}, 'ไวยากรณ์สำคัญ HSK 3'),
+    e(Typography,{color:'text.secondary', sx:{mb:3}}, 'จุดที่ออกสอบบ่อย อธิบายไทยเข้าใจง่าย พร้อมตัวอย่าง'),
+    e(Stack,{spacing:2},
+      ...items.map((it,i)=>e(Card,{variant:'outlined', key:i},
+        e(CardContent,null,
+          e(Stack,{direction:'row', spacing:1.5, alignItems:'center', sx:{mb:1}},
+            e(Avatar,{sx:{bgcolor:'primary.main', width:36, height:36, fontSize:16}}, i+1),
+            e(Box,null,
+              e(Typography,{variant:'h6', fontWeight:700}, it.t),
+              e(Typography,{variant:'caption', color:'text.secondary'}, it.sub))
+          ),
+          e(Box,{sx:{p:2, bgcolor:'action.hover', borderRadius:2, mb:1}},
+            e(Typography,{className:'cn', sx:{fontSize:22, fontWeight:700}}, it.zh),
+            e(Typography,{color:'primary.main'}, it.py),
+            e(Typography,{color:'error.main'}, it.th)
+          ),
+          e(Typography,{variant:'body2', color:'text.secondary'}, Sym('lightbulb',16),' ',it.note)
+        ))))
+  );
+}
+
+// ---------- EXAM ----------
+function Exam(){
+  const parts=[
+    {n:'听力 การฟัง', q:'40 ข้อ', t:'35 นาที', d:'จับคู่รูป · ถูก/ผิด · บทสนทนา · พูดเดี่ยว'},
+    {n:'阅读 การอ่าน', q:'30 ข้อ', t:'30 นาที', d:'จับคู่ประโยค · เติมคำ · อ่านจับใจความ'},
+    {n:'书写 การเขียน', q:'10 ข้อ', t:'15 นาที', d:'เรียงประโยค · เติมอักษรจีนจากพินอิน'},
+  ];
+  const tips=['อ่านตัวเลือก/รูปก่อนเสียงเล่น','พาร์ทอ่านเวลาบีบ — จับคีย์เวิร์ด อย่าแปลทุกคำ','ฝึกเขียน 汉字 ที่ออกบ่อยให้คล่อง','ข้อไหนไม่แน่ใจ ข้ามก่อน กลับมาทำทีหลัง'];
+  return e(Container,{maxWidth:'md', sx:{py:4}},
+    e(Typography,{variant:'h4', fontWeight:700, gutterBottom:true}, 'แนวข้อสอบ HSK 3'),
+    e(Alert,{severity:'info', sx:{mb:3}}, 'รวม 80 ข้อ · ~90 นาที · ผ่าน 180/300 คะแนน · ไม่มีพินอินในข้อสอบ ต้องอ่าน 汉字 ออก'),
+    e(Stack,{spacing:2, sx:{mb:3}},
+      ...parts.map((p,i)=>e(Card,{variant:'outlined', key:i},
+        e(CardContent,{sx:{display:'flex', alignItems:'center', gap:2}},
+          e(Avatar,{sx:{bgcolor:'error.main'}}, Sym(['headphones','menu_book','edit'][i],22)),
+          e(Box,{sx:{flex:1}},
+            e(Typography,{variant:'h6', fontWeight:700}, p.n),
+            e(Typography,{variant:'body2', color:'text.secondary'}, p.d)),
+          e(Stack,{alignItems:'flex-end'},
+            e(Chip,{size:'small', color:'primary', label:p.q}),
+            e(Typography,{variant:'caption', color:'text.secondary', sx:{mt:0.5}}, p.t))
+        )))),
+    e(Card,{variant:'outlined'},
+      e(CardContent,null,
+        e(Typography,{variant:'h6', fontWeight:700, gutterBottom:true}, Sym('tips_and_updates',20),' เทคนิคทำคะแนน'),
+        e(Stack,{spacing:1},
+          ...tips.map((t,i)=>e(Stack,{direction:'row', spacing:1, key:i, alignItems:'flex-start'},
+            e(Box,{sx:{color:'success.main', mt:'2px'}}, Sym('check_circle',18)),
+            e(Typography,{variant:'body2'}, t))))
+      ))
+  );
+}
+
+// ---------- QUIZ ----------
+function Quiz(){
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+  const [picked, setPicked] = useState(null);
+  const TOTAL = 10;
+  const quiz = useMemo(()=>{
+    const pool=[...DATA]; const qs=[];
+    for(let i=0;i<TOTAL;i++){
+      const correct = pool[(i*53+7)%pool.length];
+      const opts=[correct];
+      let g=0;
+      while(opts.length<4){ const c=pool[(i*31+g*97+11)%pool.length]; g++; if(!opts.find(o=>o.n===c.n)) opts.push(c); }
+      // shuffle opts deterministically
+      for(let k=opts.length-1;k>0;k--){const j=(k*7+i*3)%(k+1);[opts[k],opts[j]]=[opts[j],opts[k]];}
+      qs.push({correct, opts});
+    }
+    return qs;
+  },[]);
+  if(done){
+    const pct=Math.round(score/TOTAL*100);
+    return e(Container,{maxWidth:'sm', sx:{py:6, textAlign:'center'}},
+      e(Avatar,{sx:{bgcolor: pct>=60?'success.main':'error.main', width:80, height:80, mx:'auto', mb:2}}, Sym(pct>=60?'emoji_events':'replay',40)),
+      e(Typography,{variant:'h4', fontWeight:700}, 'ได้ '+score+'/'+TOTAL),
+      e(Typography,{color:'text.secondary', sx:{mb:1}}, pct>=60?'เยี่ยมมาก! ผ่านเกณฑ์':'สู้ๆ ลองอีกครั้งนะ'),
+      e(LinearProgress,{variant:'determinate', value:pct, color:pct>=60?'success':'error', sx:{height:10, borderRadius:5, my:2}}),
+      e(Button,{variant:'contained', color:'error', startIcon:Sym('replay',20), onClick:()=>{setRound(0);setScore(0);setDone(false);setPicked(null);}}, 'ทำใหม่อีกครั้ง')
+    );
+  }
+  const cur = quiz[round];
+  const answer=(o)=>{
+    if(picked!==null) return;
+    setPicked(o.n);
+    if(o.n===cur.correct.n) setScore(s=>s+1);
+    setTimeout(()=>{
+      setPicked(null);
+      if(round+1>=TOTAL) setDone(true); else setRound(r=>r+1);
+    }, 850);
+  };
+  return e(Container,{maxWidth:'sm', sx:{py:4}},
+    e(Stack,{direction:'row', justifyContent:'space-between', sx:{mb:1}},
+      e(Typography,{variant:'h5', fontWeight:700}, 'แบบทดสอบ'),
+      e(Chip,{label:'คะแนน '+score, color:'success'})),
+    e(LinearProgress,{variant:'determinate', value:(round)/TOTAL*100, sx:{mb:3, height:8, borderRadius:5}}),
+    e(Typography,{color:'text.secondary'}, 'ข้อ '+(round+1)+'/'+TOTAL+' — คำนี้แปลว่าอะไร?'),
+    e(Card,{variant:'outlined', sx:{my:2, textAlign:'center', py:3}},
+      e(Typography,{className:'cn', sx:{fontSize:60, fontWeight:700}}, cur.correct.zh),
+      e(Typography,{color:'primary.main', variant:'h6'}, cur.correct.py)),
+    e(Stack,{spacing:1.5},
+      ...cur.opts.map(o=>{
+        let color='inherit', variant='outlined';
+        if(picked!==null){
+          if(o.n===cur.correct.n){color='success'; variant='contained';}
+          else if(o.n===picked){color='error'; variant='contained';}
+        }
+        return e(Button,{key:o.n, variant:variant, color:color, size:'large',
+          sx:{justifyContent:'flex-start', py:1.5, fontSize:16}, onClick:()=>answer(o)}, o.th);
+      }))
+  );
+}
+
+// ---------- APP ----------
+function App(){
+  const [mode, setMode] = useState('light');
+  const [sec, setSec] = useState('home');
+  const theme = useMemo(()=>createTheme({
+    palette:{ mode, primary:{main: mode==='light'?'#2563eb':'#60a5fa'}, error:{main:'#dc2626'} },
+    typography:{ fontFamily:'IBM Plex Sans Thai, Noto Sans Thai, sans-serif' },
+    shape:{ borderRadius:12 }
+  }),[mode]);
+  useEffect(()=>{window.scrollTo(0,0);},[sec]);
+  const go = (s)=>setSec(s);
+  const View = {home:Home, vocab:Vocab, flash:Flash, grammar:Grammar, exam:Exam, quiz:Quiz}[sec];
+  return e(ThemeProvider,{theme},
+    e(CssBaseline),
+    e(Box,{sx:{minHeight:'100vh', bgcolor:'background.default'}},
+      e(AppBar,{position:'sticky', color:'default', elevation:0, sx:{borderBottom:1, borderColor:'divider', bgcolor:'background.paper'}},
+        e(Toolbar,null,
+          e(Avatar,{variant:'rounded', sx:{bgcolor:'error.main', color:'#fff', mr:1.5, fontWeight:700, fontFamily:'Noto Serif SC'}}, '汉'),
+          e(Box,{sx:{flexGrow:1}},
+            e(Typography,{variant:'subtitle1', fontWeight:700, lineHeight:1.1}, 'สำนักติว HSK 3'),
+            e(Typography,{variant:'caption', color:'text.secondary'}, 'เรียนจีนให้สอบผ่าน')),
+          e(IconButton,{color:'inherit', onClick:()=>setMode(m=>m==='light'?'dark':'light')}, Sym(mode==='light'?'dark_mode':'light_mode',22))
+        ),
+        e(Tabs,{value:sec, onChange:(ev,v)=>setSec(v), variant:'scrollable', scrollButtons:'auto',
+          sx:{borderTop:1, borderColor:'divider', px:1, minHeight:46}},
+          ...SECTIONS.map(s=>e(Tab,{key:s.key, value:s.key, label:s.label, icon:Sym(s.icon,20), iconPosition:'start',
+            sx:{minHeight:46, textTransform:'none', fontWeight:600}})))
+      ),
+      e(View,{go})
+    )
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+window.__rendered = true;
+</script>
+</body>
+</html>
