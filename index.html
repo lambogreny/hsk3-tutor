@@ -16,6 +16,9 @@
   *{font-family:'IBM Plex Sans Thai','Noto Sans Thai',sans-serif;}
   .cn{font-family:'Noto Serif SC','Noto Serif CJK SC',serif !important;}
   .ms{font-family:'Material Symbols Rounded' !important;font-weight:normal;line-height:1;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;}
+  @keyframes qflash{ 0%{opacity:1;} 100%{opacity:0;} }
+  @keyframes qpop{ 0%{transform:scale(0.4);opacity:0;} 60%{transform:scale(1.15);} 100%{transform:scale(1);opacity:1;} }
+  @keyframes qshake{ 0%,100%{transform:translateX(0);} 20%{transform:translateX(-10px);} 40%{transform:translateX(10px);} 60%{transform:translateX(-7px);} 80%{transform:translateX(7px);} }
   .flip-card{ perspective:1200px; }
   .flip-inner{ transition:transform .5s; transform-style:preserve-3d; position:relative; }
   .flip-inner.flipped{ transform:rotateY(180deg); }
@@ -115,7 +118,7 @@ function Home({go}){
     // hero
     e(Box,{sx:{textAlign:'center', py:{xs:6,md:9}, px:2,
       background:'linear-gradient(135deg, rgba(220,38,38,0.10), rgba(37,99,235,0.10))'}},
-      e(Chip,{color:'error', label:'สำนักติวภาษาจีนอันดับ 1', sx:{mb:2, fontWeight:600}}),
+      e(Chip,{color:'error', label:'จัดทำโดย Lishuli · สำนักติวภาษาจีน', sx:{mb:2, fontWeight:600}}),
       e(Typography,{variant:'h2',sx:{fontWeight:700, fontSize:{xs:34,md:54}, lineHeight:1.15}},
         'พิชิต ', e('span',{className:'cn',style:{color:'#dc2626'}},'HSK 三级'), ' ให้สอบผ่าน'),
       e(Typography,{sx:{color:'text.secondary', fontSize:{xs:16,md:20}, mt:2, maxWidth:680, mx:'auto'}},
@@ -314,6 +317,34 @@ function Grammar(){
   );
 }
 
+// ---------- custom audio player (pretty, MUI) ----------
+function AudioPlayer({src, label}){
+  const ref = React.useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [cur, setCur] = useState(0);
+  const [dur, setDur] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const fmt=(s)=>{ if(!s||isNaN(s)) return '0:00'; const m=Math.floor(s/60), x=Math.floor(s%60); return m+':'+String(x).padStart(2,'0'); };
+  const toggle=()=>{ const a=ref.current; if(!a) return; if(playing){a.pause();} else {a.play();} };
+  return e(Box,{sx:{display:'flex', alignItems:'center', gap:1, p:1, borderRadius:2, bgcolor:'action.hover', mt:0.5}},
+    e('audio',{ref:ref, src:src, preload:'none',
+      onPlay:()=>setPlaying(true), onPause:()=>setPlaying(false),
+      onLoadedMetadata:ev=>{setDur(ev.target.duration); setLoaded(true);},
+      onTimeUpdate:ev=>setCur(ev.target.currentTime),
+      onEnded:()=>setPlaying(false)}),
+    e(IconButton,{size:'small', color:'error', onClick:toggle, sx:{bgcolor:'error.main', color:'#fff', '&:hover':{bgcolor:'error.dark'}}},
+      Sym(playing?'pause':'play_arrow',20)),
+    e(Box,{sx:{flex:1, minWidth:0}},
+      e(Stack,{direction:'row', justifyContent:'space-between', sx:{mb:0.25}},
+        e(Typography,{variant:'caption', color:'text.secondary'}, label||'ไฟล์เสียงพาร์ทฟัง'),
+        e(Typography,{variant:'caption', color:'text.secondary'}, fmt(cur)+' / '+(loaded?fmt(dur):'--:--'))),
+      e(LinearProgress,{variant:'determinate', value: dur? (cur/dur*100):0, color:'error',
+        sx:{height:6, borderRadius:5, cursor:'pointer'},
+        onClick:ev=>{ const a=ref.current; if(!a||!dur) return; const r=ev.currentTarget.getBoundingClientRect(); a.currentTime=((ev.clientX-r.left)/r.width)*dur; }})
+    )
+  );
+}
+
 // ---------- EXAM ----------
 function Exam(){
   const parts=[
@@ -350,28 +381,47 @@ function Exam(){
       e(Typography,{variant:'caption'}, 'ระบบใหม่ปรับเป็น 9 ระดับ + เพิ่มสอบพูด (口语) ตั้งแต่ระดับ 3 · ช่วงเปลี่ยนผ่าน ข้อสอบ HSK 3 เดิม (600 คำ) ยังใช้สอบได้ คลังข้อสอบด้านล่างจึงยังใช้เตรียมตัวได้เต็มที่')),
     // REAL practice tests library
     e(Typography,{variant:'h5', fontWeight:700, sx:{mb:1, mt:1}}, '📚 คลังข้อสอบจริง — 8 ชุด'),
-    e(Typography,{color:'text.secondary', sx:{mb:2}}, 'ข้อสอบทางการ Hanban ครบชุด (ข้อสอบ + เฉลย + ไฟล์เสียงพาร์ทฟัง) ฝึกจับเวลาได้เลย'),
+    e(Card,{variant:'outlined', sx:{mb:2, bgcolor:'action.hover'}},
+      e(CardContent,{sx:{py:1.5}},
+        e(Typography,{variant:'body2', fontWeight:600, gutterBottom:true}, Sym('info',16),' ที่มาและรายละเอียดข้อสอบ'),
+        e(Typography,{variant:'caption', color:'text.secondary', component:'div'},
+          '• แหล่งที่มา: ข้อสอบทางการ HSK ระดับ 3 (汉语水平考试) จัดทำโดย ', e('b',null,'国家汉办/孔子学院总部 (Hanban / Confucius Institute HQ)'), ' — องค์กรทางการที่ออกข้อสอบ HSK'),
+        e(Typography,{variant:'caption', color:'text.secondary', component:'div'},
+          '• เวอร์ชัน: HSK 2.0 (ระบบ 6 ระดับ · 600 คำศัพท์) ซึ่งยังใช้สอบจริงในช่วงเปลี่ยนผ่านสู่ HSK 3.0'),
+        e(Typography,{variant:'caption', color:'text.secondary', component:'div'},
+          '• ', e('b',null,'H31001–H31005'), ' = ชุดข้อสอบมาตรฐาน/ตัวอย่างทางการ (ยุค HSK 2.0 เริ่มใช้ราวปี 2010)'),
+        e(Typography,{variant:'caption', color:'text.secondary', component:'div'},
+          '• ', e('b',null,'H31327–H31332'), ' (รวม #329, #330, #332) = ข้อสอบจริง (真题) ที่เคยใช้สอบ ราวปี 2013–2015'),
+        e(Typography,{variant:'caption', color:'text.secondary', component:'div'},
+          '• ทุกชุดเป็นรูปแบบ HSK ระดับ 3 มาตรฐานเดียวกัน (80 ข้อ · 600 คำศัพท์) ใช้เตรียมสอบได้เหมือนกัน'),
+        e(Typography,{variant:'caption', color:'text.secondary', component:'div'},
+          '• รวบรวม/ตรวจสอบไฟล์ล่าสุดโดย Lishuli: ', e('b',null,'29 มิถุนายน 2026'), ' · ดาวน์โหลดจากคลังเผยแพร่ my-hsk.com (อ้างอิงต้นฉบับ Hanban)')
+      )),
+    e(Typography,{color:'text.secondary', sx:{mb:2}}, 'แต่ละชุดมีครบ: ข้อสอบ + เฉลย + ไฟล์เสียงพาร์ทการฟัง — ฝึกจับเวลาได้เลย'),
     e(Grid,{container:true, spacing:2},
       ...[
-        {c:'h31001', sub:'ชุดตัวอย่างทางการ'},
-        {c:'h31002', sub:'ชุดจริง #2'},
-        {c:'h31003', sub:'ชุดจริง #3'},
-        {c:'h31004', sub:'ชุดจริง #4'},
-        {c:'h31005', sub:'ชุดจริง #5'},
-        {c:'h31329', sub:'ชุดใหม่ #329'},
-        {c:'h31330', sub:'ชุดใหม่ #330'},
-        {c:'h31332', sub:'ชุดใหม่ #332'},
+        {c:'h31001', sub:'ชุดมาตรฐานทางการ', yr:'ยุค 2010', era:'sample'},
+        {c:'h31002', sub:'ชุดมาตรฐานทางการ', yr:'ยุค 2010', era:'sample'},
+        {c:'h31003', sub:'ชุดมาตรฐานทางการ', yr:'ยุค 2010', era:'sample'},
+        {c:'h31004', sub:'ชุดมาตรฐานทางการ', yr:'ยุค 2010', era:'sample'},
+        {c:'h31005', sub:'ชุดมาตรฐานทางการ', yr:'ยุค 2010', era:'sample'},
+        {c:'h31329', sub:'ข้อสอบจริง 真题', yr:'~2013–2015', era:'real'},
+        {c:'h31330', sub:'ข้อสอบจริง 真题', yr:'~2013–2015', era:'real'},
+        {c:'h31332', sub:'ข้อสอบจริง 真题', yr:'~2013–2015', era:'real'},
       ].map((s,i)=>e(Grid,{item:true, xs:12, sm:6, md:4, key:i},
         e(Card,{variant:'outlined', sx:{height:'100%'}},
           e(CardContent,null,
-            e(Stack,{direction:'row', spacing:1.5, alignItems:'center', sx:{mb:1.5}},
+            e(Stack,{direction:'row', spacing:1.5, alignItems:'center', sx:{mb:1}},
               e(Avatar,{sx:{bgcolor:'error.main', fontWeight:700, fontSize:14}}, (i+1)),
               e(Box,null, e(Typography,{variant:'subtitle1', fontWeight:700}, s.c.toUpperCase()),
                 e(Typography,{variant:'caption', color:'text.secondary'}, s.sub))),
+            e(Stack,{direction:'row', spacing:0.5, sx:{mb:1.5}},
+              e(Chip,{size:'small', variant:'outlined', color: s.era==='real'?'error':'default', label:s.yr}),
+              e(Chip,{size:'small', variant:'outlined', label:'Hanban'})),
             e(Stack,{spacing:1},
               e(Button,{variant:'contained', color:'error', size:'small', startIcon:Sym('quiz',16), href:'exam/'+s.c+'-test.pdf', target:'_blank', fullWidth:true}, 'ข้อสอบ'),
               e(Button,{variant:'outlined', size:'small', startIcon:Sym('check_circle',16), href:'exam/'+s.c+'-answers.pdf', target:'_blank', fullWidth:true}, 'เฉลย'),
-              e('audio',{controls:true, preload:'none', src:'exam/'+s.c+'-listening.mp3', style:{width:'100%', height:34, marginTop:4}})
+              e(AudioPlayer,{src:'exam/'+s.c+'-listening.mp3', label:'เสียงพาร์ทการฟัง'})
             )
           ))))
     ),
@@ -380,19 +430,40 @@ function Exam(){
 }
 
 // ---------- QUIZ ----------
+// sound via Web Audio (no files needed)
+let _ac=null;
+function beep(type){
+  try{
+    _ac = _ac || new (window.AudioContext||window.webkitAudioContext)();
+    const seq = type==='ok' ? [[660,0],[880,0.09],[1175,0.18]] : [[300,0],[200,0.12]];
+    seq.forEach(([f,t])=>{
+      const o=_ac.createOscillator(), g=_ac.createGain();
+      o.type = type==='ok'?'sine':'square'; o.frequency.value=f;
+      o.connect(g); g.connect(_ac.destination);
+      const s=_ac.currentTime+t;
+      g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(0.18,s+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,s+0.18);
+      o.start(s); o.stop(s+0.2);
+    });
+  }catch(e){}
+}
+
 function Quiz(){
+  const [started, setStarted] = useState(false);
+  const [count, setCount] = useState(10);
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [done, setDone] = useState(false);
   const [picked, setPicked] = useState(null);
-  const [seed, setSeed] = useState(0); // bump to regenerate a fresh random quiz
-  const TOTAL = 10;
+  const [fx, setFx] = useState(null); // 'ok' | 'no'
+  const [seed, setSeed] = useState(0);
+  const TOTAL = count;
   const rint = (m)=>Math.floor(Math.random()*m);
   const quiz = useMemo(()=>{
     const pool=[...DATA]; const qs=[];
-    // pick TOTAL distinct correct answers at random
     const used=new Set();
-    while(used.size<TOTAL){ used.add(rint(pool.length)); }
+    while(used.size<TOTAL && used.size<pool.length){ used.add(rint(pool.length)); }
     [...used].forEach(ci=>{
       const correct = pool[ci];
       const opts=[correct];
@@ -400,10 +471,29 @@ function Quiz(){
       for(let k=opts.length-1;k>0;k--){const j=rint(k+1);[opts[k],opts[j]]=[opts[j],opts[k]];}
       qs.push({correct, opts});
     });
-    // shuffle question order too
     for(let k=qs.length-1;k>0;k--){const j=rint(k+1);[qs[k],qs[j]]=[qs[j],qs[k]];}
     return qs;
-  },[seed]);
+  },[seed, count]);
+
+  // START SCREEN — choose number of questions
+  if(!started){
+    return e(Container,{maxWidth:'sm', sx:{py:6, textAlign:'center'}},
+      e(Avatar,{sx:{bgcolor:'error.main', width:72, height:72, mx:'auto', mb:2}}, Sym('quiz',38)),
+      e(Typography,{variant:'h4', fontWeight:700}, 'แบบทดสอบคำศัพท์'),
+      e(Typography,{color:'text.secondary', sx:{mb:3}}, 'เลือกจำนวนข้อ แล้วเริ่มได้เลย — สุ่มข้อใหม่ทุกครั้ง'),
+      e(Typography,{variant:'subtitle2', sx:{mb:1}}, 'เลือกจำนวนข้อ (ปุ่มลัด)'),
+      e(ToggleButtonGroup,{exclusive:true, value:[10,20,30,50].includes(count)?count:null, onChange:(ev,v)=>v&&setCount(v), color:'error', sx:{mb:2}},
+        ...[10,20,30,50].map(n=>e(ToggleButton,{key:n, value:n, sx:{px:3, fontWeight:700}}, n))),
+      e(Typography,{variant:'subtitle2', sx:{mb:1, mt:1}}, 'หรือพิมพ์จำนวนเอง (1–600)'),
+      e(TextField,{type:'number', value:count, size:'small', sx:{mb:4, width:160},
+        inputProps:{min:1, max:600, style:{textAlign:'center', fontWeight:700, fontSize:18}},
+        onChange:ev=>{ let v=parseInt(ev.target.value||'0'); if(isNaN(v))v=0; v=Math.max(1,Math.min(600,v)); setCount(v); },
+        InputProps:{endAdornment:e(InputAdornment,{position:'end'},'ข้อ')}}),
+      e('br'),
+      e(Button,{variant:'contained', color:'error', size:'large', startIcon:Sym('play_arrow',24),
+        onClick:()=>{setSeed(s=>s+1);setStarted(true);setRound(0);setScore(0);setStreak(0);setDone(false);setPicked(null);}}, 'เริ่มทำข้อสอบ ('+count+' ข้อ)')
+    );
+  }
   if(done){
     const pct=Math.round(score/TOTAL*100);
     return e(Container,{maxWidth:'sm', sx:{py:6, textAlign:'center'}},
@@ -411,26 +501,43 @@ function Quiz(){
       e(Typography,{variant:'h4', fontWeight:700}, 'ได้ '+score+'/'+TOTAL),
       e(Typography,{color:'text.secondary', sx:{mb:1}}, pct>=60?'เยี่ยมมาก! ผ่านเกณฑ์':'สู้ๆ ลองอีกครั้งนะ'),
       e(LinearProgress,{variant:'determinate', value:pct, color:pct>=60?'success':'error', sx:{height:10, borderRadius:5, my:2}}),
-      e(Button,{variant:'contained', color:'error', startIcon:Sym('replay',20), onClick:()=>{setSeed(s=>s+1);setRound(0);setScore(0);setDone(false);setPicked(null);}}, 'ทำชุดใหม่ (สุ่มข้อใหม่)')
+      e(Stack,{direction:'row', spacing:1.5, justifyContent:'center'},
+        e(Button,{variant:'outlined', startIcon:Sym('tune',20), onClick:()=>{setStarted(false);setDone(false);}}, 'เปลี่ยนจำนวนข้อ'),
+        e(Button,{variant:'contained', color:'error', startIcon:Sym('replay',20), onClick:()=>{setSeed(s=>s+1);setRound(0);setScore(0);setStreak(0);setDone(false);setPicked(null);}}, 'ทำชุดใหม่'))
     );
   }
   const cur = quiz[round];
   const answer=(o)=>{
     if(picked!==null) return;
     setPicked(o.n);
-    if(o.n===cur.correct.n) setScore(s=>s+1);
+    const ok = o.n===cur.correct.n;
+    if(ok){ setScore(s=>s+1); setStreak(s=>s+1); setFx('ok'); beep('ok'); }
+    else { setStreak(0); setFx('no'); beep('no'); }
     setTimeout(()=>{
-      setPicked(null);
+      setPicked(null); setFx(null);
       if(round+1>=TOTAL) setDone(true); else setRound(r=>r+1);
-    }, 850);
+    }, 900);
   };
-  return e(Container,{maxWidth:'sm', sx:{py:4}},
-    e(Stack,{direction:'row', justifyContent:'space-between', sx:{mb:1}},
+  return e(Container,{maxWidth:'sm', sx:{py:4, position:'relative'}},
+    // full-screen flash effect
+    fx ? e(Box,{sx:{position:'fixed', inset:0, pointerEvents:'none', zIndex:2000,
+      bgcolor: fx==='ok'?'rgba(34,197,94,0.18)':'rgba(220,38,38,0.18)',
+      animation:'qflash .9s ease-out',
+      display:'flex', alignItems:'center', justifyContent:'center'}},
+      e(Box,{sx:{fontSize:140, animation: fx==='ok'?'qpop .5s ease-out':'qshake .5s'}},
+        e('span',{className:'ms', style:{fontSize:140, color: fx==='ok'?'#16a34a':'#dc2626'}}, fx==='ok'?'check_circle':'cancel'))
+    ) : null,
+    e(Stack,{direction:'row', justifyContent:'space-between', alignItems:'center', sx:{mb:1}},
       e(Typography,{variant:'h5', fontWeight:700}, 'แบบทดสอบ'),
-      e(Chip,{label:'คะแนน '+score, color:'success'})),
+      e(Stack,{direction:'row', spacing:1},
+        streak>=2 ? e(Chip,{size:'small', color:'warning', icon:e('span',{className:'ms',style:{fontSize:16,marginLeft:6}},'local_fire_department'), label:'ต่อเนื่อง '+streak}) : null,
+        e(Chip,{label:'คะแนน '+score, color:'success'}))),
     e(LinearProgress,{variant:'determinate', value:(round)/TOTAL*100, sx:{mb:3, height:8, borderRadius:5}}),
     e(Typography,{color:'text.secondary'}, 'ข้อ '+(round+1)+'/'+TOTAL+' — คำนี้แปลว่าอะไร?'),
-    e(Card,{variant:'outlined', sx:{my:2, textAlign:'center', py:3}},
+    e(Card,{variant:'outlined', sx:{my:2, textAlign:'center', py:3,
+      transition:'all .2s', transform: fx==='ok'?'scale(1.03)':(fx==='no'?'translateX(0)':'none'),
+      borderColor: fx==='ok'?'success.main':(fx==='no'?'error.main':'divider'),
+      animation: fx==='no'?'qshake .4s':'none'}},
       e(Typography,{className:'cn', sx:{fontSize:60, fontWeight:700}}, cur.correct.zh),
       e(Typography,{color:'primary.main', variant:'h6'}, cur.correct.py)),
     e(Stack,{spacing:1.5},
@@ -492,7 +599,7 @@ function App(){
         e(Toolbar,null,
           e(Avatar,{variant:'rounded', sx:{bgcolor:'error.main', color:'#fff', mr:1.5, fontWeight:700, fontFamily:'Noto Serif SC'}}, '汉'),
           e(Box,{sx:{flexGrow:1}},
-            e(Typography,{variant:'subtitle1', fontWeight:700, lineHeight:1.1}, 'สำนักติว HSK 3'),
+            e(Typography,{variant:'subtitle1', fontWeight:700, lineHeight:1.1}, 'Lishuli · สำนักติว HSK 3'),
             e(Typography,{variant:'caption', color:'text.secondary'}, 'เรียนจีนให้สอบผ่าน')),
           e(IconButton,{color:'inherit', onClick:()=>setMode(m=>m==='light'?'dark':'light')}, Sym(mode==='light'?'dark_mode':'light_mode',22))
         ),
@@ -501,7 +608,15 @@ function App(){
           ...SECTIONS.map(s=>e(Tab,{key:s.key, value:s.key, label:s.label, icon:Sym(s.icon,20), iconPosition:'start',
             sx:{minHeight:46, textTransform:'none', fontWeight:600}})))
       ),
-      e(View,{go})
+      e(View,{go}),
+      // footer credit
+      e(Box,{component:'footer', sx:{borderTop:1, borderColor:'divider', py:3, px:2, textAlign:'center', mt:4}},
+        e(Typography,{variant:'subtitle2', fontWeight:700}, 'Lishuli · สำนักติวภาษาจีน HSK 3'),
+        e(Typography,{variant:'caption', color:'text.secondary', sx:{display:'block', mt:0.5}},
+          '600 คำศัพท์ · 600 ประโยคจริง · คลังข้อสอบทางการ · จัดทำโดย Lishuli'),
+        e(Typography,{variant:'caption', color:'text.secondary', sx:{display:'block', mt:0.5}},
+          'เนื้อหาอ้างอิงข้อสอบทางการ Hanban/Chinese Testing International · © 2026 Lishuli')
+      )
     )
   );
 }
